@@ -1,13 +1,17 @@
-package mongo_to_thingsboard;
+package it.ismb.pert.thingsboard;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bson.Document;
 
-import com.mongodb.client.*;
-import com.mongodb.MongoClient;
+import com.mongodb.*;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 
 
 public class Mongodb {
@@ -27,13 +31,17 @@ public class Mongodb {
 //SE DOVESSERO ESSERE USATE PIU' INSTANZE DI QUESTA CLASSE, SEMPLICEMENTE "SI AVREBBERO DEI DOPPIONI", CIOE' DUE OGGETTI SU CUI CI SONO GLI STESSI DATI DA LEGGERE.
 //NEL CASO SI DOVESSE AGGIUNGERE L'INSERZIONE, E' CONSIGLIATO DI AGGIUNGERE OPPORTUNAMENTE SEZIONI SYNCHRONIZED E DI MODIFICARE GLI ATTRIBUITI IN STATIC.
 
-	public Mongodb(String dbName) {
+	public Mongodb(String dbURL, int dbPort, String dbName) {
 		this.dbName = dbName;
 		
         log = Logger.getLogger( "org.mongodb.driver" );
 		log.setLevel(Level.SEVERE);
 		
-        mongoClient = new MongoClient("192.168.1.146", 27017);
+        mongoClient = MongoClients.create(
+                MongoClientSettings.builder()
+                        .applyToClusterSettings(builder ->
+                                builder.hosts(Arrays.asList(new ServerAddress(dbURL, dbPort))))
+                        .build());
         database = mongoClient.getDatabase(this.dbName);
 	}
 	

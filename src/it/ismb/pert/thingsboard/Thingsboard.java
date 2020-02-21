@@ -1,10 +1,10 @@
-package mongo_to_thingsboard;
+package it.ismb.pert.thingsboard;
 
 import java.io.BufferedReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
@@ -12,38 +12,39 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Iterator;
 
+
 public class Thingsboard {
 
-	private static String token = null;
+	String username;
+	String password;
+	String thingsboardUrl;
 	
-	public static void generateToken(String userName, String password) {
+	public Thingsboard(String userName, String password, String thingsboardUrl)
+	{
+		this.username = userName;
+		this.password = password;
+		this.thingsboardUrl = thingsboardUrl;
+	}
+	private String token = null;
+	
+	public void generateToken() {
 		
-		String command = "C:/curl/bin/curl.exe -X POST --header \"Content-Type: application/json\" --header \"Accept: application/json\" -d \"{\\\"username\\\":\\\""+userName+"\\\", \\\"password\\\":\\\""+password+"\\\"}\"  http://localhost:8080/api/auth/login";
-		ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
-		Process process;
 		
-		try {
-			process = processBuilder.start();
-			InputStream inputStream = process.getInputStream();
-			
-			BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-			String line = reader.readLine();
-			if(line.startsWith("{\"status\":40")) {
-				token=null;
-				return;
-			}
-			token = line.split(",")[0].replace("{\"token\":", "").replace("\"","");
-		} catch (IOException e) {
-			e.printStackTrace();
+		String inputString = "{\"username\":\""+this.username+"\", \"password\":\""+this.password+"\"}";
+		String result = makeHttpRequest(this.thingsboardUrl+"/api/auth/login", inputString);
+		if(result != null && result.startsWith("{\"status\":40")) {
+			token=null;
+			return;
 		}
+		token = result.split(",")[0].replace("{\"token\":", "").replace("\"","");
 	}
 	
-	public static String getToken() {
+	public String getToken() {
 		return token;
 	}
 	
-	public static void addAssets(HashSet<ThingsboardComponent> setOfAssets) {
-		if(Thingsboard.getToken() == null) {
+	public void addAssets(HashSet<ThingsboardComponent> setOfAssets) {
+		if(this.getToken() == null) {
 			//Thingsboard.generateToken("bianchimarco79@yahoo.it",<InserirePassword>);
 			return;
 		}
@@ -66,9 +67,9 @@ public class Thingsboard {
 		});
 	}
 	
-	private static String addThingsboardElement(String name, String type, String assetOrDevice ) {
+	private String addThingsboardElement(String name, String type, String assetOrDevice ) {
 		try {
-			HttpURLConnection connection = (HttpURLConnection) new URL("http://localhost:8080/api/"+assetOrDevice).openConnection();
+			HttpURLConnection connection = (HttpURLConnection) new URL(this.thingsboardUrl+"/api/"+assetOrDevice).openConnection();
 			connection.setDoOutput(true); // Triggers POST.
 			connection.setRequestMethod("POST");
 			connection.setRequestProperty( "Content-Type", "application/json" );
@@ -97,15 +98,15 @@ public class Thingsboard {
 		return null;
 	}
 
-	private static String extractThingsboardId(String line) {
+	private String extractThingsboardId(String line) {
 		if(line.startsWith("{\"status\":4")) {
 			return null;
 		}
 		return line.split(",")[1].split(":")[1].replaceAll("[}\"]", "");
 	}
 	
-	public static HashSet<ThingsboardComponent> relate(HashSet<ThingsboardComponent> fathers, HashSet<ThingsboardComponent> children) {
-		if(Thingsboard.getToken() == null) {
+	public HashSet<ThingsboardComponent> relate(HashSet<ThingsboardComponent> fathers, HashSet<ThingsboardComponent> children) {
+		if(this.getToken() == null) {
 			//Thingsboard.generateToken("bianchimarco79@yahoo.it",<InserirePassword>);
 			return null;
 		}
@@ -138,7 +139,7 @@ public class Thingsboard {
 		return notRelatedThings;
 	}
 
-	private static String getIdInFather(ThingsboardComponent father) {
+	private String getIdInFather(ThingsboardComponent father) {
 		if(father instanceof Company) {
 			return ((Company)father).getCompanyId();
 		}
@@ -157,7 +158,7 @@ public class Thingsboard {
 		return null;
 	}
 
-	private static String getIdInChild(ThingsboardComponent child, ThingsboardComponent father) {
+	private String getIdInChild(ThingsboardComponent child, ThingsboardComponent father) {
 		if(father instanceof Company) {
 			if(child instanceof Farm) {
 				return ((Farm)child).getCompanyId();
@@ -216,9 +217,9 @@ public class Thingsboard {
 		return null;
 	}
 
-	private static void addRelationship(ThingsboardComponent father, ThingsboardComponent child) {
+	private void addRelationship(ThingsboardComponent father, ThingsboardComponent child) {
 		try {
-			HttpURLConnection connection = (HttpURLConnection) new URL("http://localhost:8080/api/relation").openConnection();
+			HttpURLConnection connection = (HttpURLConnection) new URL(this.thingsboardUrl+"/api/relation").openConnection();
 			connection.setDoOutput(true); // Triggers POST.
 			connection.setRequestMethod("POST");
 			connection.setRequestProperty( "Content-Type", "application/json" );
@@ -236,8 +237,8 @@ public class Thingsboard {
 		}
 	}
 	
-	public static void addDevices(HashSet<ThingsboardComponent> setOfDevices) {
-		if(Thingsboard.getToken() == null)
+	public void addDevices(HashSet<ThingsboardComponent> setOfDevices) {
+		if(this.getToken() == null)
 			return;
 		
 		setOfDevices.forEach(device->{
@@ -284,11 +285,11 @@ public class Thingsboard {
 		});
 	}
 	
-	private static String retriveThingsboardAccessToken(Device device) {
+	private String retriveThingsboardAccessToken(Device device) {
 		HttpURLConnection connection;
 		if(device.getThingsboardAccessToken() == null) {
 			try {
-				connection = (HttpURLConnection) new URL("http://localhost:8080/api/device/"+device.getThingsboardId()+"/credentials").openConnection();
+				connection = (HttpURLConnection) new URL(this.thingsboardUrl+"/api/device/"+device.getThingsboardId()+"/credentials").openConnection();
 				connection.setDoOutput(true); // Triggers POST.
 				connection.setRequestMethod("GET");
 				connection.setRequestProperty( "Content-Type", "application/json" );
@@ -314,7 +315,7 @@ public class Thingsboard {
 		return null;
 	}
 
-	private static void addTelemetryDataBuilding(Building building) {
+	private void addTelemetryDataBuilding(Building building) {
 //		POSSIBILI CAMPI DATI PER UN BUILDING: 
 //		currentTemperature; currentHumidity; currentLuminosity; currentCO2; LastUpdateTimestamp;
 		
@@ -335,17 +336,17 @@ public class Thingsboard {
 		}
 	}
 
-	private static void addTelemetryDataCompartment(Compartment compartment) {
+	private void addTelemetryDataCompartment(Compartment compartment) {
 		if(compartment.getAdditionalInfo()!= null) {
 			for( String str : compartment.getAdditionalInfo().split(" ")) {
 				if(str.split("=").length>1) {
-					setTelemetryValue(compartment, str.split("=")[0], str.split("=")[1], compartment.getThingsboardId());
+					this.setTelemetryValue(compartment, str.split("=")[0], str.split("=")[1], compartment.getThingsboardId());
 				}
 			}
 		}
 	}
 	
-	private static void addTelemetryDataPen(Pen pen) {
+	private void addTelemetryDataPen(Pen pen) {
 		if(pen.getAdditionalInfo()!= null) {
 			for( String str : pen.getAdditionalInfo().split(" ")) {
 				if(str.split("=").length>1) {
@@ -355,7 +356,7 @@ public class Thingsboard {
 		}
 	}
 	
-	private static void addTelemetryDataPig(Pig pig) {
+	private void addTelemetryDataPig(Pig pig) {
 //		sex; additionalInfo; endTimestampAcquisition; endTimestampMonitoring; startTimestampAcquisition; startTimestampMonitoring;
 		if(pig.getAdditionalInfo()!= null) {
 			for( String str : pig.getAdditionalInfo().split(" ")) {
@@ -378,7 +379,7 @@ public class Thingsboard {
 		}
 	}
 
-	private static void setTelemetryValue(Device device, String dataName, String value, String thingsboardId) {
+	private void setTelemetryValue(Device device, String dataName, String value, String thingsboardId) {
 		//SE NON LO ABBIAMO, OTTENIAMO L'ACCESS TOKEN DEL DEVICE, CHE CI SERVE PER INSERIRE UN DATO NEL DISPOSITIVO
 		HttpURLConnection connection;
 //		if(device.getThingsboardAccessToken() == null) {
@@ -408,7 +409,7 @@ public class Thingsboard {
 //		}
 		//ORA POSSIAMO INSERIRE IL DATO NEL BUILDING
 		try {
-			connection = (HttpURLConnection) new URL("http://localhost:8080/api/v1/"+device.getThingsboardAccessToken()+"/telemetry").openConnection();
+			connection = (HttpURLConnection) new URL(this.thingsboardUrl+"/api/v1/"+device.getThingsboardAccessToken()+"/telemetry").openConnection();
 			connection.setDoOutput(true); // Triggers POST.
 			connection.setRequestMethod("POST");
 			connection.setRequestProperty( "Content-Type", "application/json" );
@@ -424,7 +425,7 @@ public class Thingsboard {
 		}
 	}
 	
-	public static void saveThingsboardId(String path, String type, HashSet<ThingsboardComponent> thingsboardElements) {
+	public void saveThingsboardId(String path, String type, HashSet<ThingsboardComponent> thingsboardElements) {
         try(FileWriter fw = new FileWriter(path, true)) { 
         	String id;
             for(ThingsboardComponent element : thingsboardElements) {
@@ -442,7 +443,7 @@ public class Thingsboard {
         }
 	}
 	
-	private static String getId(ThingsboardComponent element) {
+	private String getId(ThingsboardComponent element) {
 		if(element instanceof Company) {
 				return ((Company)element).getCompanyId();
 		}
@@ -464,16 +465,16 @@ public class Thingsboard {
 		return null;
 	}
 
-	public static void deleteAllElements(String path) {
+	public void deleteAllElements(String path) {
 		String line = null;
 		try (BufferedReader buffer = Files.newBufferedReader(Paths.get(path))){;
 			while((line = buffer.readLine()) != null){
 				if(line.split(" ")[0].equals("asset")) {
-					Thingsboard.delete(line.split(" ")[1], "asset");
+					this.delete(line.split(" ")[1], "asset");
 				}
 				else {
 					if(line.split(" ")[0].equals("device")) {
-						Thingsboard.delete(line.split(" ")[1], "device");
+						this.delete(line.split(" ")[1], "device");
 					}
 				}
 			}
@@ -487,9 +488,9 @@ public class Thingsboard {
         }
 	}
 
-	public static void delete(String thingsboardId, String type) {
+	public void delete(String thingsboardId, String type) {
 		try {
-			HttpURLConnection connection = (HttpURLConnection) new URL("http://localhost:8080/api/"+type+"/"+thingsboardId).openConnection();
+			HttpURLConnection connection = (HttpURLConnection) new URL(this.thingsboardUrl+"/api/"+type+"/"+thingsboardId).openConnection();
 			connection.setDoOutput(true); // Triggers POST.
 			connection.setRequestMethod("DELETE");
 			connection.setRequestProperty( "Content-Type", "application/json" );
@@ -510,4 +511,41 @@ public class Thingsboard {
 		}
 	}	
 	
+
+	public String makeHttpRequest(String url, String inputString) {
+		String result = "";
+		try
+		{
+			// URLConnection connection = new URL(url).openConnection();
+			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+			connection.setDoOutput(true); // Triggers POST.
+			// connection.setRequestProperty("Accept-Charset", charset);
+			connection.setRequestProperty("Accept", "application/json");
+			connection.setRequestMethod("POST");
+
+			connection.setRequestProperty("Content-Type", "application/json;");
+			int length = inputString.length();
+			connection.setRequestProperty("Content-Length", String.valueOf(length));
+	
+			// Write data
+			OutputStream os = connection.getOutputStream();
+			os.write(inputString.getBytes());
+	
+			// Read response
+			StringBuilder responseSB = new StringBuilder();
+			BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+	
+			String line;
+			while ((line = br.readLine()) != null)
+				responseSB.append(line);
+			result = responseSB.toString();
+			// Close streams
+			br.close();
+			os.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
 }
