@@ -1,4 +1,4 @@
-package mongo_to_thingsboard;
+package it.ismb.pert.thingsboard;
 
 import org.bson.Document;
 

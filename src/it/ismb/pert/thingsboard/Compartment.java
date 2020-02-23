@@ -1,8 +1,8 @@
-package mongo_to_thingsboard;
+package it.ismb.pert.thingsboard;
 
 import org.bson.Document;
 
-public class Pen implements Device{
+public class Compartment implements Device{
 	
 	private Document document;
 	private String thingsboardType = "DEVICE";
@@ -11,17 +11,17 @@ public class Pen implements Device{
 	private String buildingId;
 	private String companyId;
 	private String compartmentId;
-	private String penId;
-	private String name;
 	private String farmId;
 	private String empty;
+	private String name;
 	private String sex;
 	private String additionalInfo = "";
 	
 	private String thingsboardId = null;
 	private String thingsboardAccessToken = null;
+
 	
-	public Pen(Document document) {
+	public Compartment(Document document) {
 		this.document = document;
 		setAttributes(this.document.toString());
 	}
@@ -38,14 +38,16 @@ public class Pen implements Device{
 		
 		String[] stringArray = stringDocument.split(", ");
 		for(String x: stringArray) {
-			if(x.startsWith("penId")) {
-				this.penId = x.split("=")[1];
-				System.out.println("PenId: " + this.penId);
-				continue;
-			}
 			if(x.startsWith("companyId")) {
 				this.companyId = x.split("=")[1];
 				System.out.println("CompanyId: " + this.companyId);
+				continue;
+			}
+			if(x.startsWith("name")) {
+				if(x.split("=").length>1) {
+					this.name = x.split("=")[1];
+					System.out.println("Compartment name: " + this.name);
+				}
 				continue;
 			}
 			if(x.startsWith("_id")) {
@@ -87,7 +89,7 @@ public class Pen implements Device{
 			this.additionalInfo += " " + x;
 		}
 		if(this.name == null) {
-			this.name = stringFromAdditionalInfo() + " Pen " + this.penId;
+			this.name = stringFromAdditionalInfo() + " Compartment " + this.compartmentId;
 			System.out.println("Name: " + this.name);
 		}
 		System.out.println(this.additionalInfo);
@@ -112,14 +114,6 @@ public class Pen implements Device{
 
 	public void setDocument(Document document) {
 		this.document = document;
-	}
-
-	public String getThingsboardType() {
-		return thingsboardType;
-	}
-
-	public void setThingsboardType(String thingsboardType) {
-		this.thingsboardType = thingsboardType;
 	}
 
 	public String getMongoId() {
@@ -170,12 +164,12 @@ public class Pen implements Device{
 		this.empty = empty;
 	}
 
-	public String getPenId() {
-		return penId;
+	public String getName() {
+		return name;
 	}
 
-	public void setPenId(String penId) {
-		this.penId = penId;
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public String getSex() {
@@ -210,12 +204,12 @@ public class Pen implements Device{
 		this.thingsboardAccessToken = thingsboardAccessToken;
 	}
 
-	public String getName() {
-		return name;
+	public String getThingsboardType() {
+		return thingsboardType;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setThingsboardType(String thingsboardType) {
+		this.thingsboardType = thingsboardType;
 	}
 	
 	

@@ -1,4 +1,4 @@
-package mongo_to_thingsboard;
+package it.ismb.pert.thingsboard;
 
 public interface ThingsboardComponent {
 	public String getThingsboardId();
